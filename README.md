@@ -148,4 +148,4 @@ CC BY 4.0 — See the `.mfx` v1.0 specification for details.
 
 **Format spec:** `mfx_spec_v1.0_final.md`  
 **MIME type:** `application/x-mfx`  
-**Reference implementation:** `pymfx` — `github.com/pymfx/pymfx`
+**Reference implementation:** `pymfx` — `github.com/jabahm/pymfx`
