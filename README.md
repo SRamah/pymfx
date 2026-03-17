@@ -30,10 +30,10 @@ pymfx.write(mfx, "out.mfx")
 ### Convert
 
 ```python
-pymfx.to_geojson(mfx)
-pymfx.to_gpx(mfx)
-pymfx.to_kml(mfx)
-pymfx.to_csv(mfx)
+pymfx.convert.to_geojson(mfx)
+pymfx.convert.to_gpx(mfx)
+pymfx.convert.to_kml(mfx)
+pymfx.convert.to_csv(mfx)
 ```
 
 ### Flight statistics

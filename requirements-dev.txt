@@ -1,9 +1,0 @@
--r requirements.txt
-
-# Build & publish
-build>=1.0
-twine>=5.0
-
-# Code quality
-ruff>=0.4
-mypy>=1.8
