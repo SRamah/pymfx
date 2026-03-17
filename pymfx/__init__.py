@@ -18,6 +18,15 @@ Quick start:
     # Convert
     geojson = pymfx.convert.to_geojson(mfx)
     mfx2    = pymfx.convert.from_gpx("flight.gpx")
+
+    # Flight statistics
+    stats = pymfx.flight_stats(mfx)
+    print(stats)
+
+    # Data science
+    df = mfx.trajectory.to_dataframe()   # pandas DataFrame
+    d  = mfx.to_dict()                   # plain dict
+    js = mfx.to_json()                   # JSON string
 """
 
 from . import convert
@@ -34,6 +43,7 @@ from .models import (
     TrajectoryPoint,
 )
 from .parser import ParseError, parse
+from .stats import FlightStats, flight_stats
 from .validator import ValidationIssue, ValidationResult, validate
 from .writer import write
 
@@ -44,6 +54,7 @@ __all__ = [
     "validate", "ValidationResult", "ValidationIssue",
     "compute_checksum", "verify_checksum",
     "convert",
+    "flight_stats", "FlightStats",
     "MfxFile", "Meta", "Trajectory", "TrajectoryPoint",
     "Events", "Event", "Index", "Extension", "SchemaField",
 ]

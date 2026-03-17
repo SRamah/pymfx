@@ -37,11 +37,15 @@ viz = [
     "folium>=0.14",
     "matplotlib>=3.7",
 ]
+ds = [
+    "pandas>=1.5",
+]
 notebooks = [
     "jupyter>=1.0",
     "ipykernel>=6.0",
     "folium>=0.14",
     "matplotlib>=3.7",
+    "pandas>=1.5",
 ]
 dev = [
     "pytest>=7.0",
@@ -52,6 +56,7 @@ dev = [
     "twine>=5.0",
     "folium>=0.14",
     "matplotlib>=3.7",
+    "pandas>=1.5",
 ]
 
 [project.urls]

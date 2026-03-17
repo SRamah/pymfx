@@ -5,6 +5,7 @@ Usage:
     pymfx flight.mfx --validate
     pymfx flight.mfx --checksum
     pymfx flight.mfx --info
+    pymfx flight.mfx --stats
     pymfx flight.mfx --export geojson
     pymfx flight.mfx --export gpx -o flight.gpx
     pymfx flight.mfx --export kml  -o flight.kml
@@ -17,6 +18,7 @@ from pathlib import Path
 from .checksum import compute_checksum
 from .convert import to_csv, to_geojson, to_gpx, to_kml
 from .parser import ParseError, parse
+from .stats import flight_stats
 from .validator import validate
 
 _EXPORT_FORMATS = ("geojson", "gpx", "kml", "csv")
@@ -117,6 +119,23 @@ def cmd_info(path: Path) -> int:
     return 0
 
 
+def cmd_stats(path: Path) -> int:
+    """Print aggregated flight statistics for a .mfx file."""
+    try:
+        raw_text = path.read_text(encoding='utf-8')
+    except UnicodeDecodeError as e:
+        print(f"✗ File encoding error (expected UTF-8): {e}", file=sys.stderr)
+        return 1
+    try:
+        mfx = parse(raw_text)
+    except ParseError as e:
+        print(f"✗ Parse error: {e}", file=sys.stderr)
+        return 1
+
+    print(str(flight_stats(mfx)))
+    return 0
+
+
 def cmd_export(path: Path, fmt: str, output: Path | None) -> int:
     """Export a .mfx file to another format."""
     try:
@@ -154,6 +173,7 @@ def main():
             'Examples:\n'
             '  pymfx flight.mfx --validate\n'
             '  pymfx flight.mfx --info\n'
+            '  pymfx flight.mfx --stats\n'
             '  pymfx flight.mfx --checksum\n'
             '  pymfx flight.mfx --export geojson\n'
             '  pymfx flight.mfx --export gpx -o flight.gpx'
@@ -170,6 +190,8 @@ def main():
                        help='Compute and verify SHA-256 checksums')
     group.add_argument('--info', action='store_true',
                        help='Print a summary of the file')
+    group.add_argument('--stats', action='store_true',
+                       help='Print aggregated flight statistics')
     group.add_argument('--export', choices=_EXPORT_FORMATS, metavar='FORMAT',
                        help=f'Export to another format: {", ".join(_EXPORT_FORMATS)}')
 
@@ -185,6 +207,8 @@ def main():
         sys.exit(cmd_checksum(args.file))
     elif args.info:
         sys.exit(cmd_info(args.file))
+    elif args.stats:
+        sys.exit(cmd_stats(args.file))
     elif args.export:
         sys.exit(cmd_export(args.file, args.export, args.output))
 
