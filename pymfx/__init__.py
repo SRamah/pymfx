@@ -27,6 +27,12 @@ Quick start:
     df = mfx.trajectory.to_dataframe()   # pandas DataFrame
     d  = mfx.to_dict()                   # plain dict
     js = mfx.to_json()                   # JSON string
+
+    # Utilities
+    mfx.index = pymfx.generate_index(mfx)  # compute bbox + anomaly count
+    combined  = pymfx.merge(leg1, leg2)    # concatenate two flights
+    delta     = pymfx.diff(mfx1, mfx2)    # compare two flights
+    print(delta)
 """
 
 from . import convert
@@ -44,6 +50,7 @@ from .models import (
 )
 from .parser import ParseError, parse
 from .stats import FlightStats, flight_stats
+from .utils import DiffResult, diff, generate_index, merge
 from .validator import ValidationIssue, ValidationResult, validate
 from .writer import write
 
@@ -55,6 +62,7 @@ __all__ = [
     "compute_checksum", "verify_checksum",
     "convert",
     "flight_stats", "FlightStats",
+    "generate_index", "merge", "diff", "DiffResult",
     "MfxFile", "Meta", "Trajectory", "TrajectoryPoint",
     "Events", "Event", "Index", "Extension", "SchemaField",
 ]

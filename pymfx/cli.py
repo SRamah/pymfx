@@ -19,6 +19,7 @@ from .checksum import compute_checksum
 from .convert import to_csv, to_geojson, to_gpx, to_kml
 from .parser import ParseError, parse
 from .stats import flight_stats
+from .utils import diff
 from .validator import validate
 
 _EXPORT_FORMATS = ("geojson", "gpx", "kml", "csv")
@@ -136,6 +137,30 @@ def cmd_stats(path: Path) -> int:
     return 0
 
 
+def cmd_diff(path1: Path, path2: Path) -> int:
+    """Compare two .mfx files and print a structured diff."""
+    results = []
+    for path in (path1, path2):
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError as e:
+            print(f"✗ Encoding error in {path}: {e}", file=sys.stderr)
+            return 1
+        try:
+            results.append(parse(raw))
+        except ParseError as e:
+            print(f"✗ Parse error in {path}: {e}", file=sys.stderr)
+            return 1
+
+    mfx1, mfx2 = results
+    result = diff(mfx1, mfx2)
+    print(f"File A : {path1}")
+    print(f"File B : {path2}")
+    print()
+    print(str(result))
+    return 0 if not result.has_differences else 1
+
+
 def cmd_export(path: Path, fmt: str, output: Path | None) -> int:
     """Export a .mfx file to another format."""
     try:
@@ -175,6 +200,7 @@ def main():
             '  pymfx flight.mfx --info\n'
             '  pymfx flight.mfx --stats\n'
             '  pymfx flight.mfx --checksum\n'
+            '  pymfx flight.mfx --diff other.mfx\n'
             '  pymfx flight.mfx --export geojson\n'
             '  pymfx flight.mfx --export gpx -o flight.gpx'
         ),
@@ -192,6 +218,8 @@ def main():
                        help='Print a summary of the file')
     group.add_argument('--stats', action='store_true',
                        help='Print aggregated flight statistics')
+    group.add_argument('--diff', type=Path, metavar='FILE2',
+                       help='Compare with FILE2 and print structured differences')
     group.add_argument('--export', choices=_EXPORT_FORMATS, metavar='FORMAT',
                        help=f'Export to another format: {", ".join(_EXPORT_FORMATS)}')
 
@@ -209,6 +237,8 @@ def main():
         sys.exit(cmd_info(args.file))
     elif args.stats:
         sys.exit(cmd_stats(args.file))
+    elif args.diff:
+        sys.exit(cmd_diff(args.file, args.diff))
     elif args.export:
         sys.exit(cmd_export(args.file, args.export, args.output))
 
