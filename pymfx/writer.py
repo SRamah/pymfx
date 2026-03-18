@@ -98,6 +98,10 @@ class MfxWriter:
             kv("source_format", m.source_format)
         if m.source_format_detail:
             kv("source_format_detail", m.source_format_detail)
+        if m.pid:
+            kv("pid", m.pid)
+        if m.keywords:
+            kv("keywords", m.keywords)
         kv("license", m.license)
         kv("contact", m.contact)
         for k, v in m.extra.items():

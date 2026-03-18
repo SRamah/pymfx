@@ -36,6 +36,8 @@ class Meta:
     producer_version: str | None = None
     source_format: str | None = None
     source_format_detail: str | None = None
+    pid: str | None = None          # Persistent identifier (DOI, Handle, ARK, URI)
+    keywords: list[str] | None = None  # Scientific keywords
 
     # Extra fields not defined in the official schema
     extra: dict = field(default_factory=dict)

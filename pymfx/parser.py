@@ -291,7 +291,8 @@ class MfxParser:
             'date_start', 'date_end', 'duration_s', 'status', 'application',
             'location', 'crs', 'altitude_ref', 'sensors', 'data_level',
             'processing_tools', 'producer', 'producer_version',
-            'source_format', 'source_format_detail', 'license', 'contact'
+            'source_format', 'source_format_detail', 'license', 'contact',
+            'pid', 'keywords'
         }
         extra = {k: v for k, v in kv.items() if k not in known}
 
@@ -316,6 +317,8 @@ class MfxParser:
             producer_version=kv.get('producer_version'),
             source_format=kv.get('source_format'),
             source_format_detail=kv.get('source_format_detail'),
+            pid=kv.get('pid'),
+            keywords=kv.get('keywords') if isinstance(kv.get('keywords'), list) else ([kv['keywords']] if kv.get('keywords') else None),
             license=kv['license'],
             contact=kv['contact'],
             extra=extra,

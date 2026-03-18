@@ -90,6 +90,7 @@ class MfxValidator:
         self._v19()
         self._v20()
         self._v21()
+        self._v22()
         return ValidationResult(issues=self.issues)
 
     # V01 — File starts with @mfx + valid version
@@ -373,6 +374,16 @@ class MfxValidator:
         meta = self.mfx.meta
         if meta.source_format == 'other' and not meta.source_format_detail:
             self._warn("V20", "source_format=other but source_format_detail is missing")
+
+    # V22 — pid is a valid URI if present
+    def _v22(self):
+        pid = self.mfx.meta.pid
+        if pid is None:
+            return
+        if not (pid.startswith('http://') or pid.startswith('https://')
+                or pid.startswith('doi:') or pid.startswith('hdl:')
+                or pid.startswith('ark:')):
+            self._warn("V22", f"pid '{pid}' does not look like a valid URI (expected http/https/doi/hdl/ark)")
 
     # V21 — [index] is the last section if present
     def _v21(self):
