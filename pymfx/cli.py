@@ -7,6 +7,7 @@ Usage:
     pymfx flight.mfx --info
     pymfx flight.mfx --stats
     pymfx flight.mfx --fair
+    pymfx flight.mfx --tui
     pymfx flight.mfx --export geojson
     pymfx flight.mfx --export gpx -o flight.gpx
     pymfx flight.mfx --export kml  -o flight.kml
@@ -226,6 +227,7 @@ def main():
             '  pymfx flight.mfx --info\n'
             '  pymfx flight.mfx --stats\n'
             '  pymfx flight.mfx --fair\n'
+            '  pymfx flight.mfx --tui\n'
             '  pymfx flight.mfx --checksum\n'
             '  pymfx flight.mfx --diff other.mfx\n'
             '  pymfx flight.mfx --export geojson\n'
@@ -248,6 +250,8 @@ def main():
                        help='Print aggregated flight statistics')
     group.add_argument('--fair', action='store_true',
                        help='Print FAIR score (Findable / Accessible / Interoperable / Reusable)')
+    group.add_argument('--tui', action='store_true',
+                       help='Open interactive TUI viewer (requires pip install pymfx[tui])')
     group.add_argument('--diff', type=Path, metavar='FILE2',
                        help='Compare with FILE2 and print structured differences')
     group.add_argument('--export', choices=_EXPORT_FORMATS, metavar='FORMAT',
@@ -269,6 +273,9 @@ def main():
         sys.exit(cmd_stats(args.file))
     elif args.fair:
         sys.exit(cmd_fair(args.file))
+    elif args.tui:
+        from .tui import run_tui
+        run_tui(args.file)
     elif args.diff:
         sys.exit(cmd_diff(args.file, args.diff))
     elif args.export:

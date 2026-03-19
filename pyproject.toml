@@ -29,7 +29,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# No runtime dependencies — stdlib only
+# No runtime dependencies - stdlib only
 dependencies = []
 
 [project.optional-dependencies]
@@ -47,6 +47,9 @@ notebooks = [
     "matplotlib>=3.7",
     "pandas>=1.5",
 ]
+tui = [
+    "textual>=0.50",
+]
 docs = [
     "mkdocs-material>=9.0",
 ]
@@ -60,6 +63,7 @@ dev = [
     "folium>=0.14",
     "matplotlib>=3.7",
     "pandas>=1.5",
+    "textual>=0.50",
 ]
 
 [project.urls]
