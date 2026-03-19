@@ -13,6 +13,10 @@ Usage:
     pymfx flight.mfx --export kml  -o flight.kml
     pymfx flight.mfx --export csv  -o flight.csv
     pymfx flight.mfx --export json -o flight.json
+    pymfx track.gpx  --import gpx  -o flight.mfx
+    pymfx points.csv --import csv  -o flight.mfx
+    pymfx log.csv    --import dji  -o flight.mfx
+    pymfx flight.mfx --repair -o fixed.mfx
 """
 import argparse
 import sys
@@ -23,10 +27,12 @@ from .convert import to_csv, to_geojson, to_gpx, to_kml
 from .fair import fair_score
 from .parser import ParseError, parse
 from .stats import flight_stats
-from .utils import diff
+from .utils import diff, generate_index
 from .validator import validate
+from .writer import write
 
 _EXPORT_FORMATS = ("geojson", "gpx", "kml", "csv", "json")
+_IMPORT_FORMATS = ("gpx", "geojson", "csv", "dji")
 
 
 def cmd_validate(path: Path) -> int:
@@ -217,6 +223,96 @@ def cmd_export(path: Path, fmt: str, output: Path | None) -> int:
     return 0
 
 
+def cmd_import(path: Path, fmt: str, output: Path | None) -> int:
+    """Convert a GPX / GeoJSON / CSV / DJI-CSV file into a .mfx file."""
+    from .convert import from_csv, from_dji_csv, from_geojson, from_gpx
+
+    importers = {
+        "gpx":     from_gpx,
+        "geojson": from_geojson,
+        "csv":     from_csv,
+        "dji":     from_dji_csv,
+    }
+
+    try:
+        source = path.read_text(encoding='utf-8')
+    except UnicodeDecodeError as e:
+        print(f"✗ File encoding error (expected UTF-8): {e}", file=sys.stderr)
+        return 1
+
+    try:
+        mfx = importers[fmt](source)
+    except Exception as e:
+        print(f"✗ Import error ({fmt}): {e}", file=sys.stderr)
+        return 1
+
+    result = write(mfx, compute_checksums=True)
+
+    if output:
+        output.write_text(result, encoding='utf-8')
+        n = len(mfx.trajectory.points)
+        print(f"✓ Imported {path} ({fmt}) → {output}  ({n} point{'s' if n != 1 else ''})",
+              file=sys.stderr)
+    else:
+        print(result)
+    return 0
+
+
+def cmd_repair(path: Path, output: Path | None) -> int:
+    """Repair a .mfx file: recompute SHA-256 checksums and regenerate [index]."""
+    try:
+        raw_text = path.read_text(encoding='utf-8')
+    except UnicodeDecodeError as e:
+        print(f"✗ File encoding error (expected UTF-8): {e}", file=sys.stderr)
+        return 1
+    try:
+        mfx = parse(raw_text)
+    except ParseError as e:
+        print(f"✗ Parse error: {e}", file=sys.stderr)
+        return 1
+
+    repairs: list[str] = []
+
+    # ── Regenerate [index] ──────────────────────────────────────────────────
+    new_index = generate_index(mfx)
+    if mfx.index is None:
+        repairs.append("  + [index] block added")
+    else:
+        if mfx.index.bbox != new_index.bbox:
+            repairs.append(f"  ~ bbox       : {mfx.index.bbox} → {new_index.bbox}")
+        if mfx.index.anomalies != new_index.anomalies:
+            repairs.append(f"  ~ anomalies  : {mfx.index.anomalies} → {new_index.anomalies}")
+    mfx.index = new_index
+
+    # ── Warn about placeholder values ──────────────────────────────────────
+    m = mfx.meta
+    _UNKNOWN_FIELDS = ("drone_id", "pilot_id", "location", "application",
+                       "license", "contact")
+    for field in _UNKNOWN_FIELDS:
+        val = getattr(m, field, None)
+        if val in ("unknown", "unknown:unknown"):
+            print(f"  ⚠  meta.{field} is still '{val}' — update manually",
+                  file=sys.stderr)
+
+    # ── Re-serialize (checksums recomputed by write()) ──────────────────────
+    result = write(mfx, compute_checksums=True)
+
+    # ── Report ──────────────────────────────────────────────────────────────
+    print(f"File: {path}")
+    if repairs:
+        print("Repairs applied:")
+        for r in repairs:
+            print(r)
+    else:
+        print("  (index unchanged)")
+    print("  ✓ SHA-256 checksums recomputed")
+
+    dest = output or path
+    dest.write_text(result, encoding='utf-8')
+    print(f"✓ Written to {dest}")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='pymfx',
@@ -232,13 +328,17 @@ def main():
             '  pymfx flight.mfx --diff other.mfx\n'
             '  pymfx flight.mfx --export geojson\n'
             '  pymfx flight.mfx --export gpx -o flight.gpx\n'
-            '  pymfx flight.mfx --export json -o flight.json'
+            '  pymfx flight.mfx --export json -o flight.json\n'
+            '  pymfx track.gpx  --import gpx  -o flight.mfx\n'
+            '  pymfx points.csv --import csv  -o flight.mfx\n'
+            '  pymfx log.csv    --import dji  -o flight.mfx\n'
+            '  pymfx flight.mfx --repair -o fixed.mfx'
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('file', type=Path, help='.mfx file to process')
+    parser.add_argument('file', type=Path, help='Input file to process')
     parser.add_argument('-o', '--output', type=Path, default=None,
-                        help='Output file path (default: stdout)')
+                        help='Output file path (default: stdout or in-place for --repair)')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--validate', action='store_true',
                        help='Validate the file (rules V01–V22)')
@@ -256,6 +356,11 @@ def main():
                        help='Compare with FILE2 and print structured differences')
     group.add_argument('--export', choices=_EXPORT_FORMATS, metavar='FORMAT',
                        help=f'Export to another format: {", ".join(_EXPORT_FORMATS)}')
+    group.add_argument('--import', dest='import_fmt', choices=_IMPORT_FORMATS,
+                       metavar='FORMAT',
+                       help=f'Import from another format into .mfx: {", ".join(_IMPORT_FORMATS)}')
+    group.add_argument('--repair', action='store_true',
+                       help='Recompute SHA-256 checksums and regenerate [index] (writes in-place if no -o)')
 
     args = parser.parse_args()
 
@@ -280,6 +385,10 @@ def main():
         sys.exit(cmd_diff(args.file, args.diff))
     elif args.export:
         sys.exit(cmd_export(args.file, args.export, args.output))
+    elif args.import_fmt:
+        sys.exit(cmd_import(args.file, args.import_fmt, args.output))
+    elif args.repair:
+        sys.exit(cmd_repair(args.file, args.output))
 
 
 if __name__ == '__main__':
