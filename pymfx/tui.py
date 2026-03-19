@@ -35,6 +35,8 @@ except ImportError as _err:
         "Install it with:  pip install pymfx[tui]"
     ) from _err
 
+from .anomaly import detect_anomalies
+from .checksum import compute_checksum
 from .convert import to_csv, to_geojson, to_gpx, to_kml
 from .fair import fair_score
 from .models import MfxFile
@@ -101,11 +103,29 @@ Sparkline > .sparkline--min-color {
 }
 
 #validation-bar {
-    height: 3;
+    height: auto;
+    max-height: 8;
     border: round $primary;
     margin-top: 1;
     padding: 0 2;
-    content-align: left middle;
+    overflow-y: auto;
+}
+
+#anomaly-header {
+    padding: 0 1 1 1;
+    height: auto;
+}
+
+#fair-breakdown {
+    padding: 1 2;
+    height: auto;
+    color: $text;
+}
+
+.section-title {
+    color: $primary;
+    text-style: bold;
+    padding: 1 2 0 2;
 }
 
 DataTable {
@@ -263,6 +283,10 @@ class StatsPanel(Static):
                 yield Label("⚡ speed (m/s)", classes="spark-label")
                 yield Sparkline(speeds, summary_function=max)
 
+        # Full FAIR breakdown
+        yield Label("[bold $primary]FAIR BREAKDOWN[/bold $primary]", classes="section-title")
+        yield Static(score.breakdown(), id="fair-breakdown")
+
 
 class ValidationBar(Static):
     def __init__(self, mfx: MfxFile, raw_text: str) -> None:
@@ -274,17 +298,32 @@ class ValidationBar(Static):
         result   = validate(self._mfx, raw_text=self._raw)
         errors   = [i for i in result.issues if i.level == "error"]
         warnings = [i for i in result.issues if i.level == "warning"]
+
+        # Checksum status
+        traj = self._mfx.trajectory
+        if traj.checksum:
+            actual = compute_checksum(traj.raw_lines)
+            cs_ok  = traj.checksum == actual
+            cs_tag = "[green]✓ checksum[/green]" if cs_ok else "[red]✗ checksum mismatch[/red]"
+        else:
+            cs_tag = "[dim]— no checksum[/dim]"
+
         if result.is_valid and not warnings:
-            text = "[green bold]✓  Valid file — no issues found.[/green bold]"
+            summary = "[green bold]✓  Valid[/green bold]"
         else:
             parts = []
             if errors:
                 parts.append(f"[red bold]✗ {len(errors)} error(s)[/red bold]")
             if warnings:
                 parts.append(f"[yellow bold]⚠ {len(warnings)} warning(s)[/yellow bold]")
-            details = "  ·  ".join(f"{i.code}: {i.message}" for i in (errors + warnings)[:3])
-            text = "  ".join(parts) + f"  [dim]{details}[/dim]"
-        yield Label(text, id="validation-bar")
+            summary = "  ".join(parts)
+
+        lines = [f"{summary}   {cs_tag}"]
+        for issue in errors + warnings:
+            icon = "[red]✗[/red]" if issue.level == "error" else "[yellow]⚠[/yellow]"
+            lines.append(f"  {icon} [dim]{issue.code}[/dim]  {issue.message}")
+
+        yield Label("\n".join(lines), id="validation-bar")
 
 
 # ---------------------------------------------------------------------------
@@ -349,15 +388,17 @@ class MfxTui(App):
         Binding("1",   "show_tab('overview')",      "Overview"),
         Binding("2",   "show_tab('trajectory')",    "Trajectory"),
         Binding("3",   "show_tab('events')",        "Events"),
-        Binding("4",   "show_tab('raw')",           "Raw"),
+        Binding("4",   "show_tab('anomalies')",     "Anomalies"),
+        Binding("5",   "show_tab('raw')",           "Raw"),
         Binding("e",   "export",                    "Export"),
     ]
 
     def __init__(self, path: Path) -> None:
         super().__init__()
-        self._path = path
-        self._raw  = path.read_text(encoding="utf-8")
-        self._mfx  = parse(self._raw)
+        self._path    = path
+        self._raw     = path.read_text(encoding="utf-8")
+        self._mfx     = parse(self._raw)
+        self._anomaly = detect_anomalies(self._mfx)
 
     # ------------------------------------------------------------------
     # Compose
@@ -386,8 +427,13 @@ class MfxTui(App):
             with TabPane("Events [3]", id="events"):
                 yield DataTable(id="ev-table", zebra_stripes=True, cursor_type="row")
 
-            # ---- TAB 4: Raw source ----
-            with TabPane("Raw .mfx [4]", id="raw"):
+            # ---- TAB 4: Anomalies ----
+            with TabPane("Anomalies [4]", id="anomalies"):
+                yield Static("", id="anomaly-header")
+                yield DataTable(id="anomaly-table", zebra_stripes=True, cursor_type="row")
+
+            # ---- TAB 5: Raw source ----
+            with TabPane("Raw [5]", id="raw"):
                 yield TextArea(
                     self._raw,
                     id="raw-view",
@@ -403,13 +449,16 @@ class MfxTui(App):
     # ------------------------------------------------------------------
 
     def on_mount(self) -> None:
-        self.title     = f"pymfx  ·  {self._path.name}"
+        self.title = f"pymfx  ·  {self._path.name}"
+        n_pts = len(self._mfx.trajectory.points)
+        n_anom = self._anomaly.count
+        anom_tag = f"  ·  [red]{n_anom} anomaly(ies)[/red]" if n_anom else ""
         self.sub_title = (
-            f".mfx v{self._mfx.version}  ·  "
-            f"{len(self._mfx.trajectory.points)} points"
+            f".mfx v{self._mfx.version}  ·  {n_pts} points{anom_tag}"
         )
         self._populate_trajectory()
         self._populate_events()
+        self._populate_anomalies()
 
     def _populate_trajectory(self) -> None:
         table: DataTable = self.query_one("#traj-table", DataTable)
@@ -496,6 +545,48 @@ class MfxTui(App):
                     val = ev.extra.get(name) if hasattr(ev, "extra") else None
                     row.append(str(val) if val is not None else "—")
             table.add_row(*row)
+
+    def _populate_anomalies(self) -> None:
+        report = self._anomaly
+        header: Static   = self.query_one("#anomaly-header", Static)
+        table:  DataTable = self.query_one("#anomaly-table", DataTable)
+
+        if report.count == 0:
+            header.update("[green bold]✓  No anomalies detected.[/green bold]")
+            table.add_column("(no anomalies)")
+            return
+
+        # Summary line
+        from collections import Counter
+        kinds = Counter(a.kind for a in report.anomalies)
+        summary = "  ·  ".join(f"{k} ×{v}" for k, v in kinds.items())
+        header.update(
+            f"[red bold]⚠  {report.count} anomaly(ies) found[/red bold]"
+            f"  [dim]{summary}[/dim]"
+        )
+
+        table.add_column("t (s)",    key="t")
+        table.add_column("type",     key="kind")
+        table.add_column("severity", key="sev")
+        table.add_column("detail",   key="detail")
+
+        _KIND_C = {
+            "speed_spike":     "yellow",
+            "gps_jump":        "red bold",
+            "altitude_cliff":  "orange1",
+        }
+        _SEV_C = {"warning": "yellow bold", "critical": "red bold"}
+
+        for a in report.anomalies:
+            kc  = _KIND_C.get(a.kind, "white")
+            sc  = _SEV_C.get(a.severity, "dim")
+            ico = "⚠" if a.severity == "warning" else "✗"
+            table.add_row(
+                f"[dim]{a.t:.3f}[/dim]",
+                f"[{kc}]{a.kind}[/{kc}]",
+                f"[{sc}]{ico} {a.severity}[/{sc}]",
+                a.detail,
+            )
 
     # ------------------------------------------------------------------
     # Actions
