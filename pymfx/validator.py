@@ -1,7 +1,7 @@
 """
-pymfx.validator — Validate a .mfx v1.0 file
+pymfx.validator - Validate a .mfx v1.0 file
 
-Implements rules V01–V21 from the spec.
+Implements rules V01–V22 from the spec.
 """
 from __future__ import annotations
 
@@ -45,10 +45,10 @@ class ValidationResult:
 
     def __str__(self):
         if not self.issues:
-            return "✓ Valid file — no issues found."
+            return "✓ Valid file - no issues found."
         lines = [str(i) for i in self.issues]
         status = "✓ Valid" if self.is_valid else "✗ Invalid"
-        lines.append(f"\n{status} — {len(self.errors)} error(s), {len(self.warnings)} warning(s)")
+        lines.append(f"\n{status} - {len(self.errors)} error(s), {len(self.warnings)} warning(s)")
         return "\n".join(lines)
 
 
@@ -93,28 +93,28 @@ class MfxValidator:
         self._v22()
         return ValidationResult(issues=self.issues)
 
-    # V01 — File starts with @mfx + valid version
+    # V01 - File starts with @mfx + valid version
     def _v01(self):
         if not self.mfx.version:
             self._err("V01", "Missing or invalid @mfx version")
         elif not re.match(r'^\d+\.\d+$', self.mfx.version):
             self._err("V01", f"Invalid @mfx version: {self.mfx.version!r} (expected e.g. '1.0')")
 
-    # V02 — [trajectory] checksum is correct
+    # V02 - [trajectory] checksum is correct
     def _v02(self):
         traj = self.mfx.trajectory
         if traj.checksum:
             if not verify_checksum(traj.raw_lines, traj.checksum):
                 self._err("V02", f"[trajectory] checksum mismatch. Declared: {traj.checksum}")
 
-    # V03 — [events] checksum is correct
+    # V03 - [events] checksum is correct
     def _v03(self):
         ev = self.mfx.events
         if ev and ev.checksum:
             if not verify_checksum(ev.raw_lines, ev.checksum):
                 self._err("V03", f"[events] checksum mismatch. Declared: {ev.checksum}")
 
-    # V04 — [meta] present and required fields are non-empty
+    # V04 - [meta] present and required fields are non-empty
     def _v04(self):
         # Note: parser raises ParseError before MfxFile is built if [meta] is absent,
         # so mfx.meta is never None here. We use V04 to catch empty required fields.
@@ -128,12 +128,12 @@ class MfxValidator:
             if val is None or (isinstance(val, str) and not val.strip()) or (isinstance(val, list) and len(val) == 0):
                 self._err("V04", f"Required [meta] field '{fname}' is empty or missing")
 
-    # V05 — [trajectory] present
+    # V05 - [trajectory] present
     def _v05(self):
         if self.mfx.trajectory is None:
             self._err("V05", "Missing [trajectory] section")
 
-    # V06 — date_end present and after date_start if status=complete
+    # V06 - date_end present and after date_start if status=complete
     def _v06(self):
         meta = self.mfx.meta
         if meta.status == 'complete':
@@ -148,7 +148,7 @@ class MfxValidator:
                 except Exception as e:
                     self._err("V06", f"Cannot parse dates: {e}")
 
-    # V07 — t is strictly increasing, max 3 decimal places
+    # V07 - t is strictly increasing, max 3 decimal places
     def _v07(self):
         points = self.mfx.trajectory.points
         prev_t = None
@@ -165,7 +165,7 @@ class MfxValidator:
                 self._err("V07", f"Point {i}: t={p.t} is not strictly increasing (previous: {prev_t})")
             prev_t = p.t
 
-    # V08 — Field types conform to the defined vocabulary
+    # V08 - Field types conform to the defined vocabulary
     def _v08(self):
         valid_types = {'int', 'float', 'float32', 'bool', 'str', 'date',
                        'datetime', 'geo', 'uuid', 'bbox', 'list'}
@@ -177,7 +177,7 @@ class MfxValidator:
                 if f.type.lower() not in valid_types:
                     self._err("V08", f"[events] unknown type for field '{f.name}': {f.type!r}")
 
-    # V09 — Each data[] row has exactly as many values as schema fields
+    # V09 - Each data[] row has exactly as many values as schema fields
     def _v09(self):
         traj = self.mfx.trajectory
         n_fields = len(traj.schema_fields)
@@ -193,7 +193,7 @@ class MfxValidator:
                 if n_vals != n_fields:
                     self._err("V09", f"[events] row {i+1}: {n_vals} values for {n_fields} fields")
 
-    # V10 — [no_null] fields must not contain -
+    # V10 - [no_null] fields must not contain -
     def _v10(self):
         traj = self.mfx.trajectory
         no_null_fields = {f.name for f in traj.schema_fields if 'no_null' in f.constraints}
@@ -217,7 +217,7 @@ class MfxValidator:
                         if idx < len(values) and values[idx] == '-':
                             self._err("V10", f"[events] row {i+1}: no_null field '{fn}' contains '-'")
 
-    # V11 — [range] constraints respected
+    # V11 - [range] constraints respected
     def _v11(self):
         self._check_range_section(self.mfx.trajectory.schema_fields,
                                    self.mfx.trajectory.raw_lines, "[trajectory]")
@@ -249,7 +249,7 @@ class MfxValidator:
                 except ValueError:
                     pass
 
-    # V12 — [enum] constraints respected
+    # V12 - [enum] constraints respected
     def _v12(self):
         self._check_enum_section(self.mfx.trajectory.schema_fields,
                                   self.mfx.trajectory.raw_lines, "[trajectory]")
@@ -278,19 +278,19 @@ class MfxValidator:
                 if val not in allowed:
                     self._warn("V12", f"{section_label} row {i+1}: '{f.name}'={val!r} not in {allowed}")
 
-    # V13 — Extension sections are prefixed with x_
+    # V13 - Extension sections are prefixed with x_
     def _v13(self):
         for ext in self.mfx.extensions:
             if not ext.name.startswith('x_'):
                 self._warn("V13", f"Extension section not prefixed with 'x_': [{ext.name}]")
 
-    # V14 — frequency_hz >= 1
+    # V14 - frequency_hz >= 1
     def _v14(self):
         hz = self.mfx.trajectory.frequency_hz
         if hz is not None and hz < 1:
             self._warn("V14", f"frequency_hz={hz} < 1 Hz (recommended >= 1)")
 
-    # V15 — duration_s consistent with date_end - date_start (±5s)
+    # V15 - duration_s consistent with date_end - date_start (±5s)
     def _v15(self):
         meta = self.mfx.meta
         if meta.status != 'complete':
@@ -306,7 +306,7 @@ class MfxValidator:
         except Exception:
             pass
 
-    # V16 — id is a valid RFC 4122 UUID
+    # V16 - id is a valid RFC 4122 UUID
     def _v16(self):
         id_val = self.mfx.meta.id
         if isinstance(id_val, str) and id_val.startswith('uuid:'):
@@ -321,7 +321,7 @@ class MfxValidator:
         else:
             self._warn("V16", f"id does not start with 'uuid:': {id_val!r}")
 
-    # V17 — bbox contains all [trajectory] points
+    # V17 - bbox contains all [trajectory] points
     def _v17(self):
         if self.mfx.index is None or self.mfx.index.bbox is None:
             return
@@ -336,7 +336,7 @@ class MfxValidator:
             if not (lat_min <= p.lat <= lat_max and lon_min <= p.lon <= lon_max):
                 self._warn("V17", f"Point {i} ({p.lat},{p.lon}) outside bbox {bbox}")
 
-    # V18 — Gap between declared and measured frequency_hz <= 20%
+    # V18 - Gap between declared and measured frequency_hz <= 20%
     def _v18(self):
         traj = self.mfx.trajectory
         if traj.frequency_hz is None or len(traj.points) < 2:
@@ -356,7 +356,7 @@ class MfxValidator:
         if ratio > 0.20:
             self._warn("V18", f"frequency_hz declared={declared_hz} Hz, measured≈{measured_hz:.2f} Hz (gap {ratio*100:.0f}% > 20%)")
 
-    # V19 — anomalies in [index] matches the actual count
+    # V19 - anomalies in [index] matches the actual count
     def _v19(self):
         if self.mfx.index is None or self.mfx.events is None:
             return
@@ -369,13 +369,13 @@ class MfxValidator:
         if self.mfx.index.anomalies != real_count:
             self._warn("V19", f"[index] anomalies={self.mfx.index.anomalies}, actual={real_count}")
 
-    # V20 — source_format_detail present if source_format=other
+    # V20 - source_format_detail present if source_format=other
     def _v20(self):
         meta = self.mfx.meta
         if meta.source_format == 'other' and not meta.source_format_detail:
             self._warn("V20", "source_format=other but source_format_detail is missing")
 
-    # V22 — pid is a valid URI if present
+    # V22 - pid is a valid URI if present
     def _v22(self):
         pid = self.mfx.meta.pid
         if pid is None:
@@ -385,7 +385,7 @@ class MfxValidator:
                 or pid.startswith('ark:')):
             self._warn("V22", f"pid '{pid}' does not look like a valid URI (expected http/https/doi/hdl/ark)")
 
-    # V21 — [index] is the last section if present
+    # V21 - [index] is the last section if present
     def _v21(self):
         if self.raw_text and self.mfx.index:
             idx_pos = self.raw_text.rfind('[index]')
@@ -397,7 +397,7 @@ class MfxValidator:
 
 def validate(mfx: MfxFile, raw_text: str | None = None) -> ValidationResult:
     """
-    Validate a MfxFile against rules V01–V21.
+    Validate a MfxFile against rules V01–V22.
 
     Args:
         mfx: parsed MfxFile object

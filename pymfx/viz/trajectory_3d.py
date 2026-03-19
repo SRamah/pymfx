@@ -1,5 +1,5 @@
 """
-pymfx.viz.trajectory_3d — 3-D trajectory visualization using matplotlib
+pymfx.viz.trajectory_3d - 3-D trajectory visualization using matplotlib
 
 Renders the flight path in three dimensions: longitude (X), latitude (Y)
 and altitude (Z).  Optionally, each segment can be coloured by speed.
@@ -54,7 +54,7 @@ def flight_3d(
     """
     try:
         import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 — registers projection
+        from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 - registers projection
     except ImportError as exc:
         raise ImportError(
             "matplotlib is required for 3-D trajectory plots.\n"
@@ -68,13 +68,14 @@ def flight_3d(
     alts = [p.alt_m for p in points]
     if all(a is None for a in alts):
         raise ValueError(
-            "No altitude data (alt_m) found — flight_3d() requires altitude values."
+            "No altitude data (alt_m) found - flight_3d() requires altitude values."
         )
 
     lons = [p.lon for p in points]
     lats = [p.lat for p in points]
     alts_f = [a if a is not None else 0.0 for a in alts]
 
+    plt.close("all")
     fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(111, projection="3d")
 
@@ -140,7 +141,7 @@ def flight_3d(
     ax.set_ylabel("Latitude", fontsize=9, labelpad=8)
     ax.set_zlabel("Altitude (m)", fontsize=9, labelpad=8)  # type: ignore[attr-defined]
     ax.set_title(
-        f"3-D Trajectory — {mfx.meta.drone_id}  ·  {mfx.meta.location}",
+        f"3-D Trajectory - {mfx.meta.drone_id}  ·  {mfx.meta.location}",
         fontsize=11,
         fontweight="bold",
         pad=12,

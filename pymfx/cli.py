@@ -1,5 +1,5 @@
 """
-pymfx.cli — Command-line interface
+pymfx.cli - Command-line interface
 
 Usage:
     pymfx flight.mfx --validate
@@ -105,7 +105,7 @@ def cmd_info(path: Path) -> int:
     print(f"  Points       : {len(t.points)}")
     print(f"  frequency_hz : {t.frequency_hz}")
     if t.points:
-        print(f"  t range      : {t.points[0].t:.3f}s — {t.points[-1].t:.3f}s")
+        print(f"  t range      : {t.points[0].t:.3f}s - {t.points[-1].t:.3f}s")
     if mfx.events:
         print(f"\n[events]  : {len(mfx.events.events)} event(s)")
     if mfx.index:
@@ -211,7 +211,7 @@ def main():
                         help='Output file path (default: stdout)')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--validate', action='store_true',
-                       help='Validate the file (rules V01–V21)')
+                       help='Validate the file (rules V01–V22)')
     group.add_argument('--checksum', action='store_true',
                        help='Compute and verify SHA-256 checksums')
     group.add_argument('--info', action='store_true',

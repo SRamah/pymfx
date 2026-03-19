@@ -1,5 +1,5 @@
 """
-pymfx.utils — High-level utilities for MfxFile manipulation
+pymfx.utils - High-level utilities for MfxFile manipulation
 
 Functions
 ---------
@@ -26,9 +26,9 @@ def generate_index(mfx: MfxFile) -> Index:
 
     Calculates:
 
-    * **bbox** — (lon_min, lat_min, lon_max, lat_max) bounding box of all
+    * **bbox** - (lon_min, lat_min, lon_max, lat_max) bounding box of all
       trajectory points (``None`` if no valid coordinates).
-    * **anomalies** — count of events whose ``severity`` is ``"warning"``
+    * **anomalies** - count of events whose ``severity`` is ``"warning"``
       or ``"critical"`` (0 if there are no events).
 
     Args:
@@ -81,14 +81,14 @@ def merge(
     ``mfx2``'s trajectory is appended after ``mfx1``'s with a time offset
     so the concatenated ``t`` axis remains strictly increasing.
 
-    * **Trajectory** — all points of ``mfx1`` followed by all points of
+    * **Trajectory** - all points of ``mfx1`` followed by all points of
       ``mfx2`` (``t`` values of ``mfx2`` are shifted by
       ``mfx1.last_t + gap_s``).
-    * **Schema** — union of both schemas (fields from ``mfx1`` first, new
+    * **Schema** - union of both schemas (fields from ``mfx1`` first, new
       fields from ``mfx2`` appended).
-    * **Events** — all events from both flights (``mfx2`` events are also
+    * **Events** - all events from both flights (``mfx2`` events are also
       time-shifted).
-    * **Meta** — copied from ``mfx1``; a new UUID is assigned.
+    * **Meta** - copied from ``mfx1``; a new UUID is assigned.
 
     Args:
         mfx1:  base flight (meta is taken from here)
@@ -163,7 +163,7 @@ def merge(
             freq = round((len(all_points) - 1) / total_t, 2)
 
     # --- Meta (deep copy from mfx1, new UUID) ---
-    merged_meta = copy.copy(mfx1.meta)
+    merged_meta = copy.deepcopy(mfx1.meta)
     merged_meta.id = f"uuid:{uuid.uuid4()}"
 
     return MfxFile(
@@ -287,9 +287,9 @@ def diff(mfx1: MfxFile, mfx2: MfxFile) -> DiffResult:
 
     Compares:
 
-    * **Meta** — selected human-relevant fields (drone_id, pilot_id, …)
-    * **Trajectory** — point count, duration, total distance, frequency
-    * **Events** — event count
+    * **Meta** - selected human-relevant fields (drone_id, pilot_id, …)
+    * **Trajectory** - point count, duration, total distance, frequency
+    * **Events** - event count
 
     Args:
         mfx1: first flight

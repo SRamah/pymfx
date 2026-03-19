@@ -1,5 +1,5 @@
 """
-pymfx.models — Dataclasses representing the structure of a .mfx v1.0 file
+pymfx.models - Dataclasses representing the structure of a .mfx v1.0 file
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class Meta:
 
     manufacturer: str | None = None
     date_end: str | None = None
-    duration_s: int | None = None
+    duration_s: float | None = None
     crs: str = "WGS84"
     altitude_ref: str = "MSL"
     processing_tools: str | None = None
