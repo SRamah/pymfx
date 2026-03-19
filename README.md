@@ -168,8 +168,8 @@ id            : uuid:f47ac10b-58cc-4372-a567-0e02b2c3d479
 drone_id      : drone:DJI-Mini3-SN8273
 drone_type    : multirotor
 pilot_id      : pilot:ahmed-jabrane
-date_start    : 2024-06-15T08:30:00Z
-date_end      : 2024-06-15T08:35:19Z
+date_start    : 2025-06-15T08:30:00Z
+date_end      : 2025-06-15T08:35:19Z
 status        : complete
 application   : environmental-monitoring
 location      : Parc de Sceaux, FR

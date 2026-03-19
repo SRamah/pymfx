@@ -187,7 +187,7 @@ id                   : uuid:550e8400-e29b-41d4-a716-446655440000
 drone_id             : drone:test-drone
 drone_type           : multirotor
 pilot_id             : pilot:test
-date_start           : 2024-01-01T00:00:00Z
+date_start           : 2025-06-01T00:00:00Z
 status               : complete
 application          : test
 location             : Testville

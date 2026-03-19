@@ -55,7 +55,7 @@ def _make_mfx(
         drone_id=drone_id,
         drone_type="quadcopter",
         pilot_id="pilot01",
-        date_start="2024-06-01T10:00:00Z",
+        date_start="2025-06-01T10:00:00Z",
         status="complete",
         application="survey",
         location="Paris",

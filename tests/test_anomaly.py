@@ -19,7 +19,7 @@ def _make_meta(**kwargs):
     defaults = dict(
         id="uuid:00000000-0000-0000-0000-000000000001",
         drone_id="drone:test", drone_type="multirotor", pilot_id="pilot:test",
-        date_start="2024-01-01T00:00:00Z", status="complete",
+        date_start="2025-06-01T00:00:00Z", status="complete",
         application="test", location="Testville",
         sensors=["rgb"], data_level="raw",
         license="CC-BY-4.0", contact="t@t.com",
@@ -474,7 +474,7 @@ id            : uuid:00000000-0000-0000-0000-000000000001
 drone_id      : drone:test
 drone_type    : multirotor
 pilot_id      : pilot:test
-date_start    : 2024-01-01T00:00:00Z
+date_start    : 2025-06-01T00:00:00Z
 status        : complete
 application   : test
 location      : Testville

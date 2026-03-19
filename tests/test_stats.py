@@ -51,7 +51,7 @@ def simple_mfx() -> MfxFile:
     meta = Meta(
         id="uuid:00000000-0000-0000-0000-000000000001",
         drone_id="TEST-01", drone_type="quadcopter", pilot_id="pilot01",
-        date_start="2024-06-01T10:00:00Z", status="complete",
+        date_start="2025-06-01T10:00:00Z", status="complete",
         application="survey", location="Paris", sensors=["GPS"],
         data_level="raw", license="CC-BY-4.0", contact="test@example.com",
     )
@@ -86,7 +86,7 @@ def empty_mfx() -> MfxFile:
     meta = Meta(
         id="uuid:00000000-0000-0000-0000-000000000000",
         drone_id="EMPTY", drone_type="unknown", pilot_id="n/a",
-        date_start="2024-01-01T00:00:00Z", status="incomplete",
+        date_start="2025-01-01T00:00:00Z", status="incomplete",
         application="test", location="test", sensors=[],
         data_level="raw", license="MIT", contact="n/a",
     )
@@ -94,7 +94,7 @@ def empty_mfx() -> MfxFile:
 
 
 # ---------------------------------------------------------------------------
-# TestFlightStats — core statistics
+# TestFlightStats - core statistics
 # ---------------------------------------------------------------------------
 
 class TestFlightStats:
@@ -128,7 +128,7 @@ class TestFlightStats:
         traj = Trajectory(frequency_hz=1.0, schema_fields=[], points=pts)
         meta = Meta(
             id="uuid:test", drone_id="X", drone_type="X", pilot_id="X",
-            date_start="2024-01-01T00:00:00Z", status="complete",
+            date_start="2025-01-01T00:00:00Z", status="complete",
             application="X", location="X", sensors=[], data_level="raw",
             license="MIT", contact="X",
         )
@@ -170,7 +170,7 @@ class TestFlightStats:
         traj = Trajectory(frequency_hz=1.0, schema_fields=[], points=pts)
         meta = Meta(
             id="uuid:test", drone_id="X", drone_type="X", pilot_id="X",
-            date_start="2024-01-01T00:00:00Z", status="complete",
+            date_start="2025-01-01T00:00:00Z", status="complete",
             application="X", location="X", sensors=[], data_level="raw",
             license="MIT", contact="X",
         )
@@ -186,7 +186,7 @@ class TestFlightStats:
         traj = Trajectory(frequency_hz=1.0, schema_fields=[], points=pts)
         meta = Meta(
             id="uuid:test", drone_id="X", drone_type="X", pilot_id="X",
-            date_start="2024-01-01T00:00:00Z", status="complete",
+            date_start="2025-01-01T00:00:00Z", status="complete",
             application="X", location="X", sensors=[], data_level="raw",
             license="MIT", contact="X",
         )
@@ -209,7 +209,7 @@ class TestFlightStats:
         traj = Trajectory(frequency_hz=1.0, schema_fields=[], points=pts)
         meta = Meta(
             id="uuid:test", drone_id="X", drone_type="X", pilot_id="X",
-            date_start="2024-01-01T00:00:00Z", status="complete",
+            date_start="2025-01-01T00:00:00Z", status="complete",
             application="X", location="X", sensors=[], data_level="raw",
             license="MIT", contact="X",
         )
@@ -221,7 +221,7 @@ class TestFlightStats:
 
 
 # ---------------------------------------------------------------------------
-# TestFlightStatsStr — __str__ output
+# TestFlightStatsStr - __str__ output
 # ---------------------------------------------------------------------------
 
 class TestFlightStatsStr:
@@ -246,7 +246,7 @@ class TestFlightStatsStr:
 
 
 # ---------------------------------------------------------------------------
-# TestHaversine — internal distance function
+# TestHaversine - internal distance function
 # ---------------------------------------------------------------------------
 
 class TestHaversine:
@@ -260,7 +260,7 @@ class TestHaversine:
         traj = Trajectory(frequency_hz=1.0, schema_fields=[], points=pts)
         meta = Meta(
             id="uuid:test", drone_id="X", drone_type="X", pilot_id="X",
-            date_start="2024-01-01T00:00:00Z", status="complete",
+            date_start="2025-01-01T00:00:00Z", status="complete",
             application="X", location="X", sensors=[], data_level="raw",
             license="MIT", contact="X",
         )
@@ -276,7 +276,7 @@ class TestHaversine:
         traj = Trajectory(frequency_hz=1.0, schema_fields=[], points=pts)
         meta = Meta(
             id="uuid:test", drone_id="X", drone_type="X", pilot_id="X",
-            date_start="2024-01-01T00:00:00Z", status="complete",
+            date_start="2025-01-01T00:00:00Z", status="complete",
             application="X", location="X", sensors=[], data_level="raw",
             license="MIT", contact="X",
         )
@@ -286,7 +286,7 @@ class TestHaversine:
 
 
 # ---------------------------------------------------------------------------
-# TestToDataFrame — Trajectory.to_dataframe()
+# TestToDataFrame - Trajectory.to_dataframe()
 # ---------------------------------------------------------------------------
 
 class TestToDataFrame:
@@ -327,7 +327,7 @@ class TestToDataFrame:
         assert "event_detail" in df.columns
 
     def test_events_merge_row_count_unchanged(self, mfx_with_events):
-        """Events merge must NOT add extra rows — one row per trajectory point."""
+        """Events merge must NOT add extra rows - one row per trajectory point."""
         pytest.importorskip("pandas")
         df = mfx_with_events.trajectory.to_dataframe(events=mfx_with_events.events)
         assert df.shape[0] == 5
@@ -348,7 +348,7 @@ class TestToDataFrame:
 
 
 # ---------------------------------------------------------------------------
-# TestToDict — MfxFile.to_dict()
+# TestToDict - MfxFile.to_dict()
 # ---------------------------------------------------------------------------
 
 class TestToDict:
@@ -390,7 +390,7 @@ class TestToDict:
 
 
 # ---------------------------------------------------------------------------
-# TestToJson — MfxFile.to_json()
+# TestToJson - MfxFile.to_json()
 # ---------------------------------------------------------------------------
 
 class TestToJson:

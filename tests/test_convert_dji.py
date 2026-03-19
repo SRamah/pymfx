@@ -16,11 +16,11 @@ from pymfx.models import MfxFile
 
 AIRDATA_CSV = textwrap.dedent("""\
     datetime(utc),latitude,longitude,altitude(feet),speed(mph),compass_heading(degrees),pitch(degrees),roll(degrees),isPhoto,isVideo,flycstate,battery_percent,satellites,message
-    2024-01-15 10:00:00.000,48.8566,2.3522,164.042,6.711,90.0,-2.5,1.2,False,False,AutoTakeoff,95,12,
-    2024-01-15 10:00:01.000,48.8567,2.3523,196.850,11.185,91.0,-3.0,1.5,False,True,P-GPS,94,12,
-    2024-01-15 10:00:02.000,48.8568,2.3524,229.659,13.422,92.0,-3.2,1.8,True,True,P-GPS,93,12,
-    2024-01-15 10:00:03.000,48.8569,2.3525,262.467,11.185,93.0,-2.8,1.6,False,True,P-GPS,92,12,
-    2024-01-15 10:00:04.000,48.8570,2.3526,262.467,0.000,94.0,-1.0,0.5,False,False,AutoLanding,91,12,Low battery warning
+    2025-01-15 10:00:00.000,48.8566,2.3522,164.042,6.711,90.0,-2.5,1.2,False,False,AutoTakeoff,95,12,
+    2025-01-15 10:00:01.000,48.8567,2.3523,196.850,11.185,91.0,-3.0,1.5,False,True,P-GPS,94,12,
+    2025-01-15 10:00:02.000,48.8568,2.3524,229.659,13.422,92.0,-3.2,1.8,True,True,P-GPS,93,12,
+    2025-01-15 10:00:03.000,48.8569,2.3525,262.467,11.185,93.0,-2.8,1.6,False,True,P-GPS,92,12,
+    2025-01-15 10:00:04.000,48.8570,2.3526,262.467,0.000,94.0,-1.0,0.5,False,False,AutoLanding,91,12,Low battery warning
 """)
 
 DJIFLY_CSV = textwrap.dedent("""\
@@ -33,16 +33,16 @@ DJIFLY_CSV = textwrap.dedent("""\
 
 MINIMAL_CSV = textwrap.dedent("""\
     datetime(utc),latitude,longitude
-    2024-06-01 08:00:00,51.5074,-0.1278
-    2024-06-01 08:00:01,51.5075,-0.1277
-    2024-06-01 08:00:02,51.5076,-0.1276
+    2025-06-01 08:00:00,51.5074,-0.1278
+    2025-06-01 08:00:01,51.5075,-0.1277
+    2025-06-01 08:00:02,51.5076,-0.1276
 """)
 
 NO_GPS_ROWS_CSV = textwrap.dedent("""\
     datetime(utc),latitude,longitude,altitude(feet)
-    2024-01-01 00:00:00,,,0.0
-    2024-01-01 00:00:01,48.0,2.0,32.808
-    2024-01-01 00:00:02,48.001,2.001,65.617
+    2025-01-01 00:00:00,,,0.0
+    2025-01-01 00:00:01,48.0,2.0,32.808
+    2025-01-01 00:00:02,48.001,2.001,65.617
 """)
 
 
@@ -90,7 +90,7 @@ class TestFromDjiCsvBasic:
 
     def test_date_start_extracted(self):
         mfx = from_dji_csv(AIRDATA_CSV)
-        assert mfx.meta.date_start == "2024-01-15T10:00:00Z"
+        assert mfx.meta.date_start == "2025-01-15T10:00:00Z"
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """
-Tests for pymfx.convert — import/export round-trips and format validation.
+Tests for pymfx.convert - import/export round-trips and format validation.
 """
 import json
 import xml.etree.ElementTree as ET
@@ -42,7 +42,7 @@ def simple_mfx() -> MfxFile:
     meta = Meta(
         id="uuid:00000000-0000-0000-0000-000000000001",
         drone_id="TEST-01", drone_type="quadcopter", pilot_id="pilot01",
-        date_start="2024-06-01T10:00:00Z", status="complete",
+        date_start="2025-06-01T10:00:00Z", status="complete",
         application="survey", location="Paris", sensors=["GPS"],
         data_level="raw", license="CC-BY-4.0", contact="test@example.com",
     )
@@ -214,13 +214,13 @@ class TestFromGPX:
 <gpx version="1.1" creator="test" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
     <name>TestFlight</name>
-    <time>2024-06-01T10:00:00Z</time>
+    <time>2025-06-01T10:00:00Z</time>
   </metadata>
   <trk>
     <trkseg>
-      <trkpt lat="48.858" lon="2.295"><ele>100</ele><time>2024-06-01T10:00:00Z</time></trkpt>
-      <trkpt lat="48.859" lon="2.296"><ele>105</ele><time>2024-06-01T10:00:01Z</time></trkpt>
-      <trkpt lat="48.860" lon="2.297"><ele>110</ele><time>2024-06-01T10:00:02Z</time></trkpt>
+      <trkpt lat="48.858" lon="2.295"><ele>100</ele><time>2025-06-01T10:00:00Z</time></trkpt>
+      <trkpt lat="48.859" lon="2.296"><ele>105</ele><time>2025-06-01T10:00:01Z</time></trkpt>
+      <trkpt lat="48.860" lon="2.297"><ele>110</ele><time>2025-06-01T10:00:02Z</time></trkpt>
     </trkseg>
   </trk>
 </gpx>"""
@@ -246,4 +246,4 @@ class TestFromGPX:
 
     def test_meta_date_start(self):
         mfx = from_gpx(self.GPX_SAMPLE)
-        assert mfx.meta.date_start == "2024-06-01T10:00:00Z"
+        assert mfx.meta.date_start == "2025-06-01T10:00:00Z"

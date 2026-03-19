@@ -70,11 +70,36 @@ Screen {
     height: 1fr;
 }
 
+#stats-row {
+    height: 1fr;
+}
+
+#stats-left {
+    width: 1fr;
+    border: round $primary;
+    margin: 0 1 0 0;
+    height: 1fr;
+}
+
+#stats-right {
+    width: 1fr;
+    border: round $primary;
+    height: 1fr;
+}
+
 #meta-content {
     padding: 1 2;
 }
 
 #stats-content {
+    padding: 1 2;
+}
+
+#stats-full {
+    padding: 1 2;
+}
+
+#fair-full {
     padding: 1 2;
 }
 
@@ -114,12 +139,6 @@ Sparkline > .sparkline--min-color {
 #anomaly-header {
     padding: 0 1 1 1;
     height: auto;
-}
-
-#fair-breakdown {
-    padding: 1 2;
-    height: auto;
-    color: $text;
 }
 
 .section-title {
@@ -240,6 +259,8 @@ class MetaPanel(Static):
 
 
 class StatsPanel(Static):
+    """Overview right panel: key stats + sparklines."""
+
     def __init__(self, mfx: MfxFile) -> None:
         super().__init__()
         self._mfx = mfx
@@ -271,21 +292,165 @@ class StatsPanel(Static):
         ]
         yield Label("\n".join(stats_lines), id="stats-content")
 
-        # Sparklines
+        # Sparklines with enhanced titles
         with Vertical(id="sparkline-section"):
             alts   = [p.alt_m   for p in pts if p.alt_m   is not None]
             speeds = [p.speed_ms for p in pts if p.speed_ms is not None]
 
             if alts:
-                yield Label("▲ altitude (m)", classes="spark-label")
-                yield Sparkline(alts,   summary_function=max)
+                alt_mean = sum(alts) / len(alts)
+                alt_info = (
+                    f"  [dim]min={min(alts):.1f}  "
+                    f"max={max(alts):.1f}  "
+                    f"mean={alt_mean:.1f}[/dim]"
+                )
+                yield Label(f"▲ altitude (m){alt_info}", classes="spark-label")
+                yield Sparkline(alts, summary_function=max)
+
             if speeds:
-                yield Label("⚡ speed (m/s)", classes="spark-label")
+                spd_mean = sum(speeds) / len(speeds)
+                spd_info = (
+                    f"  [dim]min={min(speeds):.1f}  "
+                    f"max={max(speeds):.1f}  "
+                    f"mean={spd_mean:.1f}[/dim]"
+                )
+                yield Label(f"⚡ speed (m/s){spd_info}", classes="spark-label")
                 yield Sparkline(speeds, summary_function=max)
 
-        # Full FAIR breakdown
-        yield Label("[bold $primary]FAIR BREAKDOWN[/bold $primary]", classes="section-title")
-        yield Static(score.breakdown(), id="fair-breakdown")
+
+class StatisticsPanel(Static):
+    """Full statistics panel for the Statistics tab (left column)."""
+
+    def __init__(self, mfx: MfxFile) -> None:
+        super().__init__()
+        self._mfx = mfx
+
+    def compose(self) -> ComposeResult:  # noqa: C901
+        stats = flight_stats(self._mfx)
+        pts   = self._mfx.trajectory.points
+        freq  = self._mfx.trajectory.frequency_hz or 0
+
+        # Expected point count from duration × freq
+        expected_pts: int | None = None
+        coverage: float | None  = None
+        if freq > 0 and stats.duration_s > 0:
+            expected_pts = int(stats.duration_s * freq) + 1
+            if expected_pts > 0:
+                coverage = stats.point_count / expected_pts * 100
+
+        # Altitude extras
+        alts = [p.alt_m for p in pts if p.alt_m is not None]
+        alt_range: float | None = None
+        alt_std:   float | None = None
+        if alts:
+            alt_range = max(alts) - min(alts)
+            if len(alts) > 1:
+                mu = sum(alts) / len(alts)
+                alt_std = (sum((x - mu) ** 2 for x in alts) / len(alts)) ** 0.5
+
+        # Speed extras
+        speeds = [p.speed_ms for p in pts if p.speed_ms is not None]
+        spd_min: float | None = None
+        spd_std: float | None = None
+        if speeds:
+            spd_min = min(speeds)
+            if len(speeds) > 1:
+                mu = sum(speeds) / len(speeds)
+                spd_std = (sum((x - mu) ** 2 for x in speeds) / len(speeds)) ** 0.5
+
+        lines: list[str] = [
+            "[bold $primary]FULL FLIGHT STATISTICS[/bold $primary]",
+            "",
+            "[bold]📍 Trajectory[/bold]",
+            _kv("points",    f"[cyan]{stats.point_count}[/cyan]"),
+            _kv("duration",  f"[cyan]{stats.duration_s:.3f} s[/cyan]"),
+            _kv("distance",  f"[cyan]{stats.total_distance_m:.3f} m[/cyan]"),
+            _kv("frequency", f"[cyan]{freq or '—'} Hz[/cyan]"),
+        ]
+        if expected_pts is not None:
+            lines.append(_kv("exp. pts", f"[dim]{expected_pts}[/dim]"))
+        if coverage is not None:
+            cov_c = "green" if coverage >= 90 else ("yellow" if coverage >= 70 else "red")
+            lines.append(_kv("coverage", f"[{cov_c}]{coverage:.1f}%[/{cov_c}]"))
+
+        # Altitude section
+        lines += [
+            "",
+            "[bold]🔺 Altitude (m)[/bold]",
+            _kv("max",   f"[cyan]{stats.alt_max_m:.3f}[/cyan]"  if stats.alt_max_m  is not None else "—"),
+            _kv("min",   f"[cyan]{stats.alt_min_m:.3f}[/cyan]"  if stats.alt_min_m  is not None else "—"),
+            _kv("mean",  f"[cyan]{stats.alt_mean_m:.3f}[/cyan]" if stats.alt_mean_m is not None else "—"),
+            _kv("range", f"[cyan]{alt_range:.3f}[/cyan]"        if alt_range is not None else "—"),
+            _kv("std dev", f"[cyan]{alt_std:.3f}[/cyan]"        if alt_std   is not None else "—"),
+        ]
+
+        # Speed section
+        lines += [
+            "",
+            "[bold]⚡ Speed (m/s)[/bold]",
+            _kv("max",    f"[cyan]{stats.speed_max_ms:.3f}[/cyan]"  if stats.speed_max_ms  is not None else "—"),
+            _kv("min",    f"[cyan]{spd_min:.3f}[/cyan]"             if spd_min             is not None else "—"),
+            _kv("mean",   f"[cyan]{stats.speed_mean_ms:.3f}[/cyan]" if stats.speed_mean_ms is not None else "—"),
+            _kv("std dev",f"[cyan]{spd_std:.3f}[/cyan]"             if spd_std             is not None else "—"),
+        ]
+
+        # Events section
+        if self._mfx.events and self._mfx.events.events:
+            from collections import Counter
+            n_ev = len(self._mfx.events.events)
+            kinds = Counter(str(ev.type) for ev in self._mfx.events.events if ev.type)
+            lines += [
+                "",
+                "[bold]📅 Events[/bold]",
+                _kv("total", f"[cyan]{n_ev}[/cyan]"),
+            ]
+            for kind, count in kinds.most_common(8):
+                lines.append(_kv(f"  {kind}", f"[dim]{count}[/dim]"))
+
+        # Schema section
+        schema_fields = self._mfx.trajectory.schema_fields
+        if schema_fields:
+            lines += [
+                "",
+                "[bold]🗂  Schema fields[/bold]",
+            ]
+            for sf in schema_fields:
+                constraints = ", ".join(sf.constraints) if sf.constraints else "—"
+                lines.append(_kv(f"  {sf.name}", f"[dim]{sf.type}[/dim]  [dim]{constraints}[/dim]"))
+
+        yield Label("\n".join(lines), id="stats-full")
+
+
+class FairPanel(Static):
+    """FAIR score panel for the Statistics tab (right column)."""
+
+    def __init__(self, mfx: MfxFile) -> None:
+        super().__init__()
+        self._mfx = mfx
+
+    def compose(self) -> ComposeResult:
+        score = fair_score(self._mfx)
+        lines = [
+            "[bold $primary]FAIR SCORE[/bold $primary]",
+            "",
+            f"  Σ composite  =  {_badge(score.S)}",
+            "",
+            f"  F (Findability)       =  {_badge(score.F)}",
+            f"  A (Accessibility)     =  {_badge(score.A)}",
+            f"  I (Interoperability)  =  {_badge(score.interop)}",
+            f"  R (Reusability)       =  {_badge(score.R)}",
+            "",
+            "[bold]Weights[/bold]",
+            _kv("α (F)", f"{score.alpha:.2f}"),
+            _kv("β (A)", f"{score.beta:.2f}"),
+            _kv("γ (I)", f"{score.gamma:.2f}"),
+            _kv("δ (R)", f"{score.delta:.2f}"),
+            "",
+            "[bold]Criterion Breakdown[/bold]",
+            "",
+            score.breakdown(),
+        ]
+        yield Label("\n".join(lines), id="fair-full")
 
 
 class ValidationBar(Static):
@@ -384,13 +549,14 @@ class MfxTui(App):
     CSS = _CSS
 
     BINDINGS = [
-        Binding("q",   "quit",                     "Quit"),
-        Binding("1",   "show_tab('overview')",      "Overview"),
-        Binding("2",   "show_tab('trajectory')",    "Trajectory"),
-        Binding("3",   "show_tab('events')",        "Events"),
-        Binding("4",   "show_tab('anomalies')",     "Anomalies"),
-        Binding("5",   "show_tab('raw')",           "Raw"),
-        Binding("e",   "export",                    "Export"),
+        Binding("q",   "quit",                      "Quit"),
+        Binding("1",   "show_tab('overview')",       "Overview"),
+        Binding("2",   "show_tab('trajectory')",     "Trajectory"),
+        Binding("3",   "show_tab('events')",         "Events"),
+        Binding("4",   "show_tab('statistics')",     "Statistics"),
+        Binding("5",   "show_tab('anomalies')",      "Anomalies"),
+        Binding("6",   "show_tab('raw')",            "Raw"),
+        Binding("e",   "export",                     "Export"),
     ]
 
     def __init__(self, path: Path) -> None:
@@ -427,13 +593,21 @@ class MfxTui(App):
             with TabPane("Events [3]", id="events"):
                 yield DataTable(id="ev-table", zebra_stripes=True, cursor_type="row")
 
-            # ---- TAB 4: Anomalies ----
-            with TabPane("Anomalies [4]", id="anomalies"):
+            # ---- TAB 4: Statistics ----
+            with TabPane("Statistics [4]", id="statistics"):
+                with Horizontal(id="stats-row"):
+                    with ScrollableContainer(id="stats-left"):
+                        yield StatisticsPanel(mfx)
+                    with ScrollableContainer(id="stats-right"):
+                        yield FairPanel(mfx)
+
+            # ---- TAB 5: Anomalies ----
+            with TabPane("Anomalies [5]", id="anomalies"):
                 yield Static("", id="anomaly-header")
                 yield DataTable(id="anomaly-table", zebra_stripes=True, cursor_type="row")
 
-            # ---- TAB 5: Raw source ----
-            with TabPane("Raw [5]", id="raw"):
+            # ---- TAB 6: Raw source ----
+            with TabPane("Raw [6]", id="raw"):
                 yield TextArea(
                     self._raw,
                     id="raw-view",

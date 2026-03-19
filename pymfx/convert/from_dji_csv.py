@@ -108,7 +108,7 @@ def from_dji_csv(source: str | Path) -> MfxFile:
 
     Example::
 
-        mfx = from_dji_csv("DJIFlightRecord_2024-01-15.csv")
+        mfx = from_dji_csv("DJIFlightRecord_2025-01-15.csv")
         mfx.meta.pilot_id = "pilot:john"
         mfx.meta.location = "Paris, FR"
         pymfx.write(mfx, "flight.mfx")
