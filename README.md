@@ -112,6 +112,7 @@ viz.events_timeline(mfx)      # events on the flight timeline
 ## Convert
 
 ```python
+mfx = pymfx.convert.from_dji_csv("DJIFlightRecord.csv")  # AirData or DJI Fly
 mfx = pymfx.convert.from_gpx("track.gpx")
 mfx = pymfx.convert.from_geojson("route.geojson")
 mfx = pymfx.convert.from_csv("points.csv")
