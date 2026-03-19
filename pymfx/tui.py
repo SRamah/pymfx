@@ -15,14 +15,19 @@ try:
     from textual.app import App, ComposeResult
     from textual.binding import Binding
     from textual.containers import Horizontal, Vertical, ScrollableContainer
+    from textual.screen import ModalScreen
     from textual.widgets import (
         DataTable,
         Footer,
         Header,
         Label,
+        ListItem,
+        ListView,
+        Sparkline,
         Static,
         TabbedContent,
         TabPane,
+        TextArea,
     )
 except ImportError as _err:
     raise ImportError(
@@ -30,6 +35,7 @@ except ImportError as _err:
         "Install it with:  pip install pymfx[tui]"
     ) from _err
 
+from .convert import to_csv, to_geojson, to_gpx, to_kml
 from .fair import fair_score
 from .models import MfxFile
 from .parser import parse
@@ -37,7 +43,7 @@ from .stats import flight_stats
 from .validator import validate
 
 # ---------------------------------------------------------------------------
-# Colour palette (Textual CSS colours)
+# CSS
 # ---------------------------------------------------------------------------
 
 _CSS = """
@@ -45,31 +51,21 @@ Screen {
     background: $surface;
 }
 
-#title-bar {
-    height: 1;
-    background: $accent;
-    color: $text;
-    padding: 0 2;
-    text-style: bold;
-}
-
-.panel-title {
-    background: $primary;
-    color: $text;
-    text-style: bold;
-    padding: 0 1;
-    height: 1;
-}
-
 #overview-left {
     width: 1fr;
     border: round $primary;
     margin: 0 1 0 0;
+    height: 1fr;
 }
 
 #overview-right {
     width: 1fr;
     border: round $primary;
+    height: 1fr;
+}
+
+#overview-row {
+    height: 1fr;
 }
 
 #meta-content {
@@ -80,8 +76,28 @@ Screen {
     padding: 1 2;
 }
 
-#fair-content {
+#sparkline-section {
     padding: 0 2 1 2;
+    height: auto;
+}
+
+.spark-label {
+    color: $text-muted;
+    padding: 1 0 0 0;
+    height: 1;
+}
+
+Sparkline {
+    height: 4;
+    margin: 0 0 1 0;
+}
+
+Sparkline > .sparkline--max-color {
+    color: $error;
+}
+
+Sparkline > .sparkline--min-color {
+    color: $success;
 }
 
 #validation-bar {
@@ -90,39 +106,6 @@ Screen {
     margin-top: 1;
     padding: 0 2;
     content-align: left middle;
-}
-
-.valid-ok {
-    color: $success;
-    text-style: bold;
-}
-
-.valid-err {
-    color: $error;
-    text-style: bold;
-}
-
-.valid-warn {
-    color: $warning;
-    text-style: bold;
-}
-
-.kv-label {
-    color: $text-muted;
-}
-
-.kv-value {
-    color: $text;
-    text-style: bold;
-}
-
-.fair-score {
-    color: $accent;
-    text-style: bold;
-}
-
-.section-sep {
-    color: $primary-darken-2;
 }
 
 DataTable {
@@ -136,20 +119,49 @@ TabbedContent {
 TabPane {
     padding: 1;
 }
+
+/* Export modal */
+ExportModal {
+    align: center middle;
+}
+
+#export-dialog {
+    background: $surface;
+    border: double $accent;
+    padding: 1 2;
+    width: 40;
+    height: auto;
+}
+
+#export-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+#export-list {
+    height: auto;
+    max-height: 12;
+    border: round $primary;
+}
+
+#export-status {
+    margin-top: 1;
+    color: $success;
+    text-style: bold;
+}
 """
 
 
 # ---------------------------------------------------------------------------
-# Helper: key-value row markup
+# Helpers
 # ---------------------------------------------------------------------------
 
 def _kv(label: str, value: str, width: int = 14) -> str:
-    label_padded = f"{label:<{width}}"
-    return f"[dim]{label_padded}[/dim]  {value}"
+    return f"[dim]{label:<{width}}[/dim]  {value}"
 
 
 def _badge(value: float, thresholds: tuple[float, float] = (0.75, 0.90)) -> str:
-    """Colour a 0-1 float value as green/yellow/red."""
     if value >= thresholds[1]:
         return f"[green]{value:.2f}[/green]"
     if value >= thresholds[0]:
@@ -157,13 +169,23 @@ def _badge(value: float, thresholds: tuple[float, float] = (0.75, 0.90)) -> str:
     return f"[red]{value:.2f}[/red]"
 
 
+def _speed_colour(speed: float | None, vmin: float, vmax: float) -> str:
+    """Return a Rich colour for a speed value on a green→yellow→red gradient."""
+    if speed is None or vmax <= vmin:
+        return "white"
+    ratio = (speed - vmin) / (vmax - vmin)
+    if ratio < 0.33:
+        return "green"
+    if ratio < 0.66:
+        return "yellow"
+    return "red"
+
+
 # ---------------------------------------------------------------------------
 # Widgets
 # ---------------------------------------------------------------------------
 
 class MetaPanel(Static):
-    """Displays [meta] fields."""
-
     def __init__(self, mfx: MfxFile) -> None:
         super().__init__()
         self._mfx = mfx
@@ -198,8 +220,6 @@ class MetaPanel(Static):
 
 
 class StatsPanel(Static):
-    """Displays flight statistics + FAIR score."""
-
     def __init__(self, mfx: MfxFile) -> None:
         super().__init__()
         self._mfx = mfx
@@ -207,22 +227,21 @@ class StatsPanel(Static):
     def compose(self) -> ComposeResult:
         stats = flight_stats(self._mfx)
         score = fair_score(self._mfx)
+        pts   = self._mfx.trajectory.points
 
+        # Stats block
         stats_lines = [
             "[bold $primary]FLIGHT STATISTICS[/bold $primary]",
             "",
-            _kv("points",       f"[cyan]{stats.point_count}[/cyan]"),
-            _kv("duration",     f"[cyan]{stats.duration_s:.1f} s[/cyan]"),
-            _kv("distance",     f"[cyan]{stats.total_distance_m:.1f} m[/cyan]"),
-            _kv("alt max",      f"[cyan]{stats.alt_max_m:.1f} m[/cyan]" if stats.alt_max_m is not None else "—"),
-            _kv("alt min",      f"[cyan]{stats.alt_min_m:.1f} m[/cyan]" if stats.alt_min_m is not None else "—"),
-            _kv("alt mean",     f"[cyan]{stats.alt_mean_m:.1f} m[/cyan]" if stats.alt_mean_m is not None else "—"),
-            _kv("speed max",    f"[cyan]{stats.speed_max_ms:.1f} m/s[/cyan]" if stats.speed_max_ms is not None else "—"),
-            _kv("speed mean",   f"[cyan]{stats.speed_mean_ms:.1f} m/s[/cyan]" if stats.speed_mean_ms is not None else "—"),
-            _kv("freq",         f"[cyan]{self._mfx.trajectory.frequency_hz or '—'} Hz[/cyan]"),
-        ]
-
-        fair_lines = [
+            _kv("points",     f"[cyan]{stats.point_count}[/cyan]"),
+            _kv("duration",   f"[cyan]{stats.duration_s:.1f} s[/cyan]"),
+            _kv("distance",   f"[cyan]{stats.total_distance_m:.1f} m[/cyan]"),
+            _kv("alt max",    f"[cyan]{stats.alt_max_m:.1f} m[/cyan]"   if stats.alt_max_m   is not None else "—"),
+            _kv("alt min",    f"[cyan]{stats.alt_min_m:.1f} m[/cyan]"   if stats.alt_min_m   is not None else "—"),
+            _kv("alt mean",   f"[cyan]{stats.alt_mean_m:.1f} m[/cyan]"  if stats.alt_mean_m  is not None else "—"),
+            _kv("speed max",  f"[cyan]{stats.speed_max_ms:.1f} m/s[/cyan]" if stats.speed_max_ms is not None else "—"),
+            _kv("speed mean", f"[cyan]{stats.speed_mean_ms:.1f} m/s[/cyan]" if stats.speed_mean_ms is not None else "—"),
+            _kv("freq",       f"[cyan]{self._mfx.trajectory.frequency_hz or '—'} Hz[/cyan]"),
             "",
             "[bold $primary]FAIR SCORE[/bold $primary]",
             "",
@@ -230,20 +249,29 @@ class StatsPanel(Static):
             f"F={_badge(score.F)}  A={_badge(score.A)}  "
             f"I={_badge(score.interop)}  R={_badge(score.R)}",
         ]
+        yield Label("\n".join(stats_lines), id="stats-content")
 
-        yield Label("\n".join(stats_lines + fair_lines), id="stats-content")
+        # Sparklines
+        with Vertical(id="sparkline-section"):
+            alts   = [p.alt_m   for p in pts if p.alt_m   is not None]
+            speeds = [p.speed_ms for p in pts if p.speed_ms is not None]
+
+            if alts:
+                yield Label("▲ altitude (m)", classes="spark-label")
+                yield Sparkline(alts,   summary_function=max)
+            if speeds:
+                yield Label("⚡ speed (m/s)", classes="spark-label")
+                yield Sparkline(speeds, summary_function=max)
 
 
 class ValidationBar(Static):
-    """One-line validation result."""
-
     def __init__(self, mfx: MfxFile, raw_text: str) -> None:
         super().__init__()
         self._mfx = mfx
         self._raw = raw_text
 
     def compose(self) -> ComposeResult:
-        result = validate(self._mfx, raw_text=self._raw)
+        result   = validate(self._mfx, raw_text=self._raw)
         errors   = [i for i in result.issues if i.level == "error"]
         warnings = [i for i in result.issues if i.level == "warning"]
         if result.is_valid and not warnings:
@@ -254,11 +282,57 @@ class ValidationBar(Static):
                 parts.append(f"[red bold]✗ {len(errors)} error(s)[/red bold]")
             if warnings:
                 parts.append(f"[yellow bold]⚠ {len(warnings)} warning(s)[/yellow bold]")
-            details = "  ·  ".join(
-                f"{i.code}: {i.message}" for i in (errors + warnings)[:3]
-            )
+            details = "  ·  ".join(f"{i.code}: {i.message}" for i in (errors + warnings)[:3])
             text = "  ".join(parts) + f"  [dim]{details}[/dim]"
         yield Label(text, id="validation-bar")
+
+
+# ---------------------------------------------------------------------------
+# Export modal
+# ---------------------------------------------------------------------------
+
+_EXPORT_FORMATS = {
+    "geojson": ("GeoJSON   (.geojson)", ".geojson", to_geojson),
+    "gpx":     ("GPX 1.1   (.gpx)",    ".gpx",     to_gpx),
+    "kml":     ("KML 2.2   (.kml)",    ".kml",     to_kml),
+    "csv":     ("CSV       (.csv)",    ".csv",     to_csv),
+    "json":    ("JSON      (.json)",   ".json",    None),
+}
+
+
+class ExportModal(ModalScreen):
+    """Modal for choosing export format."""
+
+    BINDINGS = [Binding("escape", "dismiss", "Cancel")]
+
+    def __init__(self, mfx: MfxFile, source_path: Path) -> None:
+        super().__init__()
+        self._mfx  = mfx
+        self._path = source_path
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="export-dialog"):
+            yield Label("⬇  Export as", id="export-title")
+            items = [ListItem(Label(f"  {label}"), name=key)
+                     for key, (label, _ext, _fn) in _EXPORT_FORMATS.items()]
+            yield ListView(*items, id="export-list")
+            yield Label("", id="export-status")
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        fmt = event.item.name
+        if fmt not in _EXPORT_FORMATS:
+            return
+        label, ext, fn = _EXPORT_FORMATS[fmt]
+        out = self._path.with_suffix(ext)
+        try:
+            if fmt == "json":
+                content = self._mfx.to_json()
+            else:
+                content = fn(self._mfx)
+            out.write_text(content, encoding="utf-8")
+            self.query_one("#export-status", Label).update(f"✓ Saved → {out.name}")
+        except Exception as exc:
+            self.query_one("#export-status", Label).update(f"[red]✗ {exc}[/red]")
 
 
 # ---------------------------------------------------------------------------
@@ -271,10 +345,12 @@ class MfxTui(App):
     CSS = _CSS
 
     BINDINGS = [
-        Binding("q",     "quit",        "Quit"),
-        Binding("1",     "show_tab('overview')",    "Overview"),
-        Binding("2",     "show_tab('trajectory')",  "Trajectory"),
-        Binding("3",     "show_tab('events')",      "Events"),
+        Binding("q",   "quit",                     "Quit"),
+        Binding("1",   "show_tab('overview')",      "Overview"),
+        Binding("2",   "show_tab('trajectory')",    "Trajectory"),
+        Binding("3",   "show_tab('events')",        "Events"),
+        Binding("4",   "show_tab('raw')",           "Raw"),
+        Binding("e",   "export",                    "Export"),
     ]
 
     def __init__(self, path: Path) -> None:
@@ -295,7 +371,7 @@ class MfxTui(App):
 
             # ---- TAB 1: Overview ----
             with TabPane("Overview [1]", id="overview"):
-                with Horizontal():
+                with Horizontal(id="overview-row"):
                     with ScrollableContainer(id="overview-left"):
                         yield MetaPanel(mfx)
                     with ScrollableContainer(id="overview-right"):
@@ -304,23 +380,34 @@ class MfxTui(App):
 
             # ---- TAB 2: Trajectory ----
             with TabPane("Trajectory [2]", id="trajectory"):
-                table = DataTable(id="traj-table", zebra_stripes=True, cursor_type="row")
-                yield table
+                yield DataTable(id="traj-table", zebra_stripes=True, cursor_type="row")
 
             # ---- TAB 3: Events ----
             with TabPane("Events [3]", id="events"):
-                table = DataTable(id="ev-table", zebra_stripes=True, cursor_type="row")
-                yield table
+                yield DataTable(id="ev-table", zebra_stripes=True, cursor_type="row")
+
+            # ---- TAB 4: Raw source ----
+            with TabPane("Raw .mfx [4]", id="raw"):
+                yield TextArea(
+                    self._raw,
+                    id="raw-view",
+                    read_only=True,
+                    theme="dracula",
+                    show_line_numbers=True,
+                )
 
         yield Footer()
 
     # ------------------------------------------------------------------
-    # on_mount: populate DataTables
+    # on_mount
     # ------------------------------------------------------------------
 
     def on_mount(self) -> None:
-        self.title = f"pymfx  ·  {self._path.name}"
-        self.sub_title = f".mfx v{self._mfx.version}  ·  {len(self._mfx.trajectory.points)} points"
+        self.title     = f"pymfx  ·  {self._path.name}"
+        self.sub_title = (
+            f".mfx v{self._mfx.version}  ·  "
+            f"{len(self._mfx.trajectory.points)} points"
+        )
         self._populate_trajectory()
         self._populate_events()
 
@@ -331,33 +418,39 @@ class MfxTui(App):
             table.add_column("(empty)")
             return
 
-        # Build columns from schema fields
-        schema_names = [sf.name for sf in self._mfx.trajectory.schema_fields]
-        if not schema_names:
-            schema_names = ["t", "lat", "lon", "alt_m", "speed_ms"]
+        schema_names = [sf.name for sf in self._mfx.trajectory.schema_fields] or \
+                       ["t", "lat", "lon", "alt_m", "speed_ms"]
 
         for col in schema_names:
             table.add_column(col, key=col)
 
+        # Speed range for colour gradient
+        speeds = [p.speed_ms for p in pts if p.speed_ms is not None]
+        vmin = min(speeds) if speeds else 0.0
+        vmax = max(speeds) if speeds else 0.0
+
         for p in pts:
+            colour = _speed_colour(p.speed_ms, vmin, vmax)
             row = []
             for name in schema_names:
                 if name == "t":
-                    row.append(f"{p.t:.3f}")
+                    row.append(f"[dim]{p.t:.3f}[/dim]")
                 elif name == "lat":
                     row.append(f"{p.lat:.6f}" if p.lat is not None else "—")
                 elif name == "lon":
                     row.append(f"{p.lon:.6f}" if p.lon is not None else "—")
                 elif name == "alt_m":
-                    row.append(f"{p.alt_m:.1f}" if p.alt_m is not None else "—")
+                    row.append(f"[cyan]{p.alt_m:.1f}[/cyan]" if p.alt_m is not None else "—")
                 elif name == "speed_ms":
-                    row.append(f"{p.speed_ms:.2f}" if p.speed_ms is not None else "—")
+                    if p.speed_ms is not None:
+                        row.append(f"[{colour}]{p.speed_ms:.2f}[/{colour}]")
+                    else:
+                        row.append("—")
                 elif name == "heading":
                     row.append(f"{p.heading:.1f}" if p.heading is not None else "—")
-                elif name == "roll":
-                    row.append(f"{p.roll:.2f}" if p.roll is not None else "—")
-                elif name == "pitch":
-                    row.append(f"{p.pitch:.2f}" if p.pitch is not None else "—")
+                elif name in ("roll", "pitch"):
+                    val = getattr(p, name, None)
+                    row.append(f"{val:.2f}" if val is not None else "—")
                 else:
                     val = p.extra.get(name)
                     row.append(str(val) if val is not None else "—")
@@ -369,30 +462,34 @@ class MfxTui(App):
             table.add_column("(no events)")
             return
 
-        schema_names = [sf.name for sf in self._mfx.events.schema_fields]
-        if not schema_names:
-            schema_names = ["t", "type", "severity", "detail"]
+        schema_names = [sf.name for sf in self._mfx.events.schema_fields] or \
+                       ["t", "type", "severity", "detail"]
 
         for col in schema_names:
             table.add_column(col, key=col)
+
+        _TYPE_COLOUR = {
+            "takeoff": "green bold", "landing": "red bold",
+            "waypoint": "cyan",      "photo": "yellow",
+            "video_start": "bright_yellow", "video_stop": "orange1",
+            "anomaly": "red bold",   "warning": "yellow",
+            "rtl": "magenta",        "abort": "red bold",
+        }
+        _SEV_COLOUR = {
+            "info": "dim", "warning": "yellow bold", "critical": "red bold",
+        }
 
         for ev in self._mfx.events.events:
             row = []
             for name in schema_names:
                 if name == "t":
-                    row.append(f"{ev.t:.3f}")
+                    row.append(f"[dim]{ev.t:.3f}[/dim]")
                 elif name == "type":
-                    colour = {
-                        "takeoff": "green", "landing": "red",
-                        "waypoint": "cyan", "photo": "yellow",
-                        "anomaly": "red bold", "warning": "yellow",
-                    }.get(str(ev.type), "white")
-                    row.append(f"[{colour}]{ev.type or '—'}[/{colour}]")
+                    c = _TYPE_COLOUR.get(str(ev.type), "white")
+                    row.append(f"[{c}]{ev.type or '—'}[/{c}]")
                 elif name == "severity":
-                    colour = {"info": "dim", "warning": "yellow", "critical": "red bold"}.get(
-                        str(ev.severity), "dim"
-                    )
-                    row.append(f"[{colour}]{ev.severity or '—'}[/{colour}]")
+                    c = _SEV_COLOUR.get(str(ev.severity), "dim")
+                    row.append(f"[{c}]{ev.severity or '—'}[/{c}]")
                 elif name == "detail":
                     row.append(str(ev.detail) if ev.detail is not None else "—")
                 else:
@@ -407,6 +504,9 @@ class MfxTui(App):
     def action_show_tab(self, tab_id: str) -> None:
         self.query_one(TabbedContent).active = tab_id
 
+    def action_export(self) -> None:
+        self.push_screen(ExportModal(self._mfx, self._path))
+
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -414,8 +514,7 @@ class MfxTui(App):
 
 def run_tui(path: Path) -> None:
     """Launch the MfxTui app for the given .mfx file."""
-    app = MfxTui(path)
-    app.run()
+    MfxTui(path).run()
 
 
 if __name__ == "__main__":
