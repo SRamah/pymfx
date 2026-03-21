@@ -14,7 +14,7 @@ from pathlib import Path
 try:
     from textual.app import App, ComposeResult
     from textual.binding import Binding
-    from textual.containers import Horizontal, Vertical, ScrollableContainer
+    from textual.containers import Horizontal, ScrollableContainer, Vertical
     from textual.screen import ModalScreen
     from textual.widgets import (
         DataTable,

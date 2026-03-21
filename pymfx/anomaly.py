@@ -34,7 +34,6 @@ from dataclasses import dataclass, field
 
 from .models import Event, Events, MfxFile, SchemaField
 
-
 # ---------------------------------------------------------------------------
 # Result types
 # ---------------------------------------------------------------------------

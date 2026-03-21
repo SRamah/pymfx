@@ -24,12 +24,12 @@ import argparse
 import sys
 from pathlib import Path
 
+from .anomaly import detect_anomalies
 from .checksum import compute_checksum
 from .convert import to_csv, to_geojson, to_gpx, to_kml
 from .fair import fair_score
 from .parser import ParseError, parse
 from .stats import flight_stats
-from .anomaly import detect_anomalies
 from .utils import diff, generate_index
 from .validator import validate
 from .writer import write
