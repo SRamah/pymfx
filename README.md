@@ -13,6 +13,25 @@ pip install pymfx
 
 ---
 
+## Examples
+
+Two ready-to-use `.mfx` files are provided in [`examples/`](examples/):
+
+| File | Points | Duration | Description |
+|---|---|---|---|
+| [`minimal.mfx`](examples/minimal.mfx) | 10 | 9 s | Simple takeoff/hover/land, 1 Hz, Paris |
+| [`demo_flight.mfx`](examples/demo_flight.mfx) | 320 | 319 s | Full survey mission with events, Parc de Sceaux |
+
+```python
+mfx = pymfx.parse("examples/demo_flight.mfx")
+```
+
+```bash
+pymfx examples/demo_flight.mfx --tui
+```
+
+---
+
 ## Package
 
 ```python

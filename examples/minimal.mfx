@@ -1,0 +1,39 @@
+@mfx 1.0
+@encoding UTF-8
+
+[meta]
+id                   : uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890
+drone_id             : drone:generic-quad-01
+drone_type           : multirotor
+pilot_id             : pilot:jabhm
+date_start           : 2025-06-15T09:00:00Z
+date_end             : 2025-06-15T09:00:09Z
+status               : complete
+application          : demo
+location             : "Paris, FR"
+crs                  : WGS84
+altitude_ref         : AGL
+sensors              : [rgb]
+data_level           : raw
+producer             : pymfx
+producer_version     : 1.0.1
+source_format        : native
+license              : CC-BY-4.0
+contact              : jabhm@example.org
+
+[trajectory]
+frequency_hz : 1.0
+@checksum sha256:45f330e890f49916a595ba841ef6772e67c75c282cf6918a1a994b21abbaa516
+@schema point: {t:float [no_null], lat:float [no_null], lon:float [no_null], alt_m:float32, speed_ms:float32, heading:float32}
+
+data[]:
+0.000 | 48.8566 | 2.3522 | 0.0 | 0.0 | 0.0
+1.000 | 48.8567 | 2.353 | 10.0 | 5.2 | 45.0
+2.000 | 48.857 | 2.3545 | 28.0 | 8.1 | 60.0
+3.000 | 48.8575 | 2.356 | 42.0 | 9.4 | 62.0
+4.000 | 48.858 | 2.3572 | 50.0 | 8.7 | 65.0
+5.000 | 48.8583 | 2.358 | 50.2 | 7.9 | 70.0
+6.000 | 48.8583 | 2.358 | 38.0 | 4.1 | 180.0
+7.000 | 48.8582 | 2.3578 | 22.0 | 3.3 | 185.0
+8.000 | 48.858 | 2.3575 | 10.0 | 2.5 | 190.0
+9.000 | 48.8578 | 2.3572 | 0.0 | 1.2 | 195.0
