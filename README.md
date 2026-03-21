@@ -10,9 +10,6 @@ Python library for the [Mission Flight Exchange](https://github.com/jabahm/pymfx
 
 ```bash
 pip install pymfx
-pip install pymfx[viz]
-pip install pymfx[ds]
-pip install pymfx[tui]
 ```
 
 ## Package

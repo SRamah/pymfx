@@ -29,8 +29,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# No runtime dependencies - stdlib only
-dependencies = []
+dependencies = [
+    "folium>=0.14",
+    "matplotlib>=3.7",
+    "pandas>=1.5",
+    "textual>=0.50",
+]
 
 [project.optional-dependencies]
 viz = [
